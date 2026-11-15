@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar South Pole Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for a sleeker look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-slate-200 h-screen flex overflow-hidden">
+
+    <!-- Left Sidebar: Controls -->
+    <aside class="w-80 bg-gray-900 border-r border-gray-800 flex flex-col p-6 shadow-2xl z-10 flex-shrink-0 overflow-y-auto">
+        <h1 class="text-xl font-bold text-white mb-2">Artemis Planner</h1>
+        <p class="text-xs text-gray-400 mb-8">South Pole Horizon Evaluator</p>
+
+        <!-- Site Selector -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Landing Site</label>
+            <select id="site-select" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none text-white">
+                <option value="shackleton">Shackleton Crater</option>
+                <option value="malapert">Malapert Massif</option>
+                <option value="artemis">Artemis III Candidate Region</option>
+            </select>
+        </div>
+
+        <!-- Date Picker -->
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Landing Date</label>
+            <input type="date" id="date-input" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2.5 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none text-white [color-scheme:dark]">
+        </div>
+
+        <!-- Time Offset Slider -->
+        <div class="mb-6">
+            <div class="flex justify-between items-end mb-2">
+                <label class="block text-sm font-medium text-gray-300">Time Offset (Days)</label>
+                <span id="slider-value" class="text-blue-400 font-mono text-sm">0.0</span>
+            </div>
+            <input type="range" id="time-slider" min="0" max="28" step="0.1" value="0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            <div class="flex justify-between text-xs text-gray-500 mt-1 font-mono">
+                <span>0 (Arrival)</span>
+                <span>28 (Full Lunar Day)</span>
+            </div>
+        </div>
+
+        <div class="mt-auto pt-6 border-t border-gray-800">
+            <p class="text-xs text-gray-500 leading-relaxed">
+                Drag the slider to simulate a 28-day lunar cycle. Watch the Sun and Earth move relative to the horizon.
+            </p>
+        </div>
+    </aside>
+
+    <!-- Main Area: Visualization -->
+    <main class="flex-1 flex flex-col p-6 min-w-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 to-gray-950">
+        
+        <!-- Status Cards -->
+        <div class="grid grid-cols-2 gap-4 mb-6 flex-shrink-0">
+            <!-- Power Card -->
+            <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 p-4 rounded-xl shadow-lg flex items-center gap-4 transition-all" id="power-card">
+                <div class="p-3 rounded-full bg-yellow-500/10 text-yellow-400" id="power-icon-container">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Power Status</h3>
+                    <p class="text-lg font-bold text-white" id="power-text">Checking...</p>
+                </div>
+            </div>
+
+            <!-- Comms Card -->
+            <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 p-4 rounded-xl shadow-lg flex items-center gap-4 transition-all" id="comms-card">
+                <div class="p-3 rounded-full bg-blue-500/10 text-blue-400" id="comms-icon-container">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>
+                </div>
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Comms Status</h3>
+                    <p class="text-lg font-bold text-white" id="comms-text">Checking...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="flex-1 relative rounded-xl overflow-hidden border border-gray-700 shadow-2xl bg-black">
+            <canvas id="horizon-canvas"></canvas>
+            
+            <!-- Overlay Labels -->
+            <div class="absolute top-4 left-4 text-xs font-mono text-gray-400 opacity-70">
+                LUNAR HORIZON VISUALIZER (AZ/EL)
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // DOM Elements
+        const siteSelect = document.getElementById('site-select');
+        const dateInput = document.getElementById('date-input');
+        const timeSlider = document.getElementById('time-slider');
+        const sliderValueDisplay = document.getElementById('slider-value');
+        
+        const powerText = document.getElementById('power-text');
+        const powerCard = document.getElementById('power-card');
+        const commsText = document.getElementById('comms-text');
+        const commsCard = document.getElementById('comms-card');
+
+        const canvas = document.getElementById('horizon-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set default date to today
+        dateInput.valueAsDate = new Date();
+
+        // Site Specific Baseline Offsets (Phase shifts for the sine waves)
+        const SITE_DATA = {
+            'shackleton': { sunPhase: 0, earthPhase: Math.PI / 4, earthBaseEl: 0.1 },
+            'malapert': { sunPhase: Math.PI / 6, earthPhase: 0, earthBaseEl: -0.2 },
+            'artemis': { sunPhase: -Math.PI / 8, earthPhase: Math.PI / 2, earthBaseEl: 0.3 }
+        };
+
+        // Starfield cache
+        let stars = [];
+        for (let i = 0; i < 150; i++) {
+            stars.push({
+                x: Math.random(),
+                y: Math.random(),
+                size: Math.random() * 1.5,
+                opacity: Math.random()
+            });
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            drawSimulation();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawSimulation() {
+            const width = canvas.width;
+            const height = canvas.height;
+            const horizonY = height / 2; // Middle of the screen
+            
+            // Get inputs
+            const days = parseFloat(timeSlider.value);
+            const siteKey = siteSelect.value;
+            const site = SITE_DATA[siteKey];
+
+            // --- MATH LOGIC ---
+            // Normalized time (0 to 1 over 28 days)
+            const t = days / 28;
+            
+            // Sun Logic: Moves through a full sine wave over 28 days
+            const sunAmplitude = height * 0.4; // How high/low it goes in pixels
+            const sunSineValue = Math.sin((t * Math.PI * 2) + site.sunPhase);
+            // Y goes down in canvas, so subtract to go up
+            const sunY = horizonY - (sunSineValue * sunAmplitude); 
+            const sunX = width * 0.3; // Fixed X position for visualization
+
+            // Earth Logic: Different sine wave to represent orbital wobble (libration)
+            const earthAmplitude = height * 0.25;
+            const earthSineValue = Math.sin((t * Math.PI * 4) + site.earthPhase) + site.earthBaseEl;
+            const earthY = horizonY - (earthSineValue * earthAmplitude);
+            const earthX = width * 0.7; // Fixed X position
+
+            // Status Updates
+            const sunVisible = sunY < horizonY;
+            const earthVisible = earthY < horizonY;
+
+            updateCards(sunVisible, earthVisible);
+
+            // --- DRAWING ---
+            
+            // Clear
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Sky (Top Half)
+            ctx.fillStyle = '#020617'; // Very dark blue/black
+            ctx.fillRect(0, 0, width, horizonY);
+            
+            // Draw Stars in sky
+            ctx.save();
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                ctx.beginPath();
+                ctx.arc(star.x * width, star.y * horizonY, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+
+            // 2. Ground (Bottom Half)
+            ctx.fillStyle = '#1e293b'; // Slate grey
+            ctx.fillRect(0, horizonY, width, height - horizonY);
+
+            // 3. Horizon Line
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, horizonY);
+            ctx.lineTo(width, horizonY);
+            ctx.stroke();
+
+            // 4. Draw Earth
+            // Draw it before the Sun so if they overlap, Sun is in front (just a choice)
+            ctx.save();
+            ctx.translate(earthX, earthY);
+            
+            // Earth Glow
+            const earthGlow = ctx.createRadialGradient(0, 0, 10, 0, 0, 40);
+            earthGlow.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+            earthGlow.addColorStop(1, 'rgba(59, 130, 246, 0)');
+            ctx.fillStyle = earthGlow;
+            ctx.beginPath(); ctx.arc(0, 0, 40, 0, Math.PI*2); ctx.fill();
+
+            // Earth Body
+            ctx.fillStyle = '#3b82f6';
+            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#22c55e'; // Continents mock
+            ctx.beginPath(); ctx.arc(-4, 3, 6, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(5, -4, 5, 0, Math.PI*2); ctx.fill();
+            
+            // Label
+            ctx.fillStyle = 'white';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('EARTH', 0, -25);
+            ctx.restore();
+
+            // 5. Draw Sun
+            ctx.save();
+            ctx.translate(sunX, sunY);
+            
+            // Sun Glow
+            const sunGlow = ctx.createRadialGradient(0, 0, 15, 0, 0, 60);
+            sunGlow.addColorStop(0, 'rgba(234, 179, 8, 0.6)');
+            sunGlow.addColorStop(1, 'rgba(234, 179, 8, 0)');
+            ctx.fillStyle = sunGlow;
+            ctx.beginPath(); ctx.arc(0, 0, 60, 0, Math.PI*2); ctx.fill();
+
+            // Sun Body
+            ctx.fillStyle = '#fde047';
+            ctx.beginPath(); ctx.arc(0, 0, 20, 0, Math.PI*2); ctx.fill();
+            
+            // Label
+            ctx.fillStyle = 'white';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('SUN', 0, -35);
+            ctx.restore();
+
+            // 6. Draw semi-transparent overlay on ground to mask things "below" horizon
+            // This makes the Sun and Earth look like they are behind the ground when they dip
+            ctx.fillStyle = 'rgba(30, 41, 59, 0.9)'; // Matches ground color but slightly transparent for effect
+            ctx.fillRect(0, horizonY, width, height - horizonY);
+        }
+
+        function updateCards(sunVisible, earthVisible) {
+            if (sunVisible) {
+                powerText.innerText = "Optimal (Sun Visible)";
+                powerText.className = "text-lg font-bold text-green-400";
+                powerCard.style.borderColor = "rgba(74, 222, 128, 0.4)"; // green border
+            } else {
+                powerText.innerText = "Offline (Eclipse)";
+                powerText.className = "text-lg font-bold text-red-400";
+                powerCard.style.borderColor = "rgba(248, 113, 113, 0.4)"; // red border
+            }
+
+            if (earthVisible) {
+                commsText.innerText = "Connected (LOS)";
+                commsText.className = "text-lg font-bold text-green-400";
+                commsCard.style.borderColor = "rgba(74, 222, 128, 0.4)";
+            } else {
+                commsText.innerText = "Offline (Blocked)";
+                commsText.className = "text-lg font-bold text-red-400";
+                commsCard.style.borderColor = "rgba(248, 113, 113, 0.4)";
+            }
+        }
+
+        // Event Listeners
+        timeSlider.addEventListener('input', (e) => {
+            sliderValueDisplay.innerText = parseFloat(e.target.value).toFixed(1);
+            drawSimulation();
+        });
+
+        siteSelect.addEventListener('change', () => {
+            drawSimulation();
+        });
+
+        // Initialization
+        setTimeout(() => {
+            resizeCanvas(); // Initial draw after layout is computed
+        }, 100);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="Lunar Landing Site Navigator & Orbital Flight Lab — NASA Space Apps Challenge 2026. Interactive Sun and Earth horizon tracking, power & DTE comms assessment, and 3D flight simulation.">
+  <meta name="theme-color" content="#05080e">
+  <title>Lunar Landing Site Navigator — NASA Space Apps Challenge & Flight Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- TOP NAVIGATION -->
+<nav class="site-nav" aria-label="Main navigation">
+  <div class="nav-left">
+    <a class="brand" href="#hero">
+      <span class="brand-mark" aria-hidden="true">
+        <span class="brand-radar"></span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+      </span>
+      <div class="brand-title">
+        <span>LUNAR <b>NAVIGATOR</b></span>
+        <span class="brand-sub">SPACE APPS 2026 // FLIGHT LAB</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="nav-links">
+    <a href="#navigator" class="nav-link"><span class="nav-icon">🛰️</span>Site Navigator</a>
+    <a href="#comparator" class="nav-link"><span class="nav-icon">⚖️</span>Compare Sites</a>
+    <a href="#hero" class="nav-link"><span class="nav-icon">🚀</span>Flight Simulator</a>
+    <a href="#mission" class="nav-link"><span class="nav-icon">🏛️</span>Missions</a>
+    <a href="#resources" class="nav-link"><span class="nav-icon">📡</span>NASA &amp; CSA Resources</a>
+  </div>
+
+  <div class="nav-right">
+    <button id="audio-toggle" class="nav-pill-btn" type="button" aria-pressed="true" title="Toggle audio synthesizer effects">
+      <span class="pill-dot active"></span>
+      <span id="audio-label">AUDIO: ON</span>
+    </button>
+    <a class="nav-cta" href="#navigator">Evaluate Sites <span aria-hidden="true">↘</span></a>
+  </div>
+</nav>
+
+<!-- HERO SECTION: 3D LUNAR DESCENT SIMULATOR WITH COMPLEX REALISTIC ROCKET -->
+<header id="hero" class="is-ready">
+  <canvas id="c" aria-label="Interactive 3D realistic lunar module descent simulator"></canvas>
+
+  <div class="hero-copy">
+    <div class="badge-tag"><span class="badge-pulse"></span>NASA SPACE APPS CHALLENGE 2026 · FLIGHT SIMULATOR</div>
+    <h1>Lunar<br>Descent<span class="title-dot">.</span></h1>
+    <p>Piloting a realistic next-generation lunar lander down to the Moon's rugged surface. Manage variable-mass propellant, attitude RCS thrusters, and settle onto the landing pad.</p>
+    <div class="hero-actions">
+      <a class="btn-primary" href="#navigator">Explore Site Navigator <span aria-hidden="true">↓</span></a>
+      <a class="btn-secondary" href="#mission">Mission History <span>↗</span></a>
+    </div>
+  </div>
+
+  <!-- LIVE FLIGHT HUD -->
+  <aside id="hud" aria-label="Live flight instruments" aria-live="off">
+    <div class="hud-title">
+      <span>TELEMETRY · FLIGHT DATA</span>
+      <i class="telemetry-live" title="Live stream"></i>
+    </div>
+    <div><span>Radar altitude</span><b id="alt">— m</b></div>
+    <div><span>Vertical speed</span><b id="vs">— m/s</b></div>
+    <div><span>Horizontal speed</span><b id="hs">— m/s</b></div>
+    <div><span>Pitch / roll</span><b id="attitude">0° / 0°</b></div>
+    <div><span>Fuel / mass</span><b id="fuel-mass">100% / — kg</b></div>
+    <div class="bar" aria-label="Remaining fuel"><i id="fb"></i></div>
+    <div class="hud-divider"></div>
+    <div class="hud-secondary">
+      <span>Sun angle / DTE Link</span>
+      <b id="hud-env-status">Grazing 1.8° · Active</b>
+    </div>
+  </aside>
+
+  <!-- PHASE CARD -->
+  <aside class="phase-card" aria-live="polite">
+    <div class="phase-header">
+      <span class="phase-label">DESCENT PHASE</span>
+      <span class="phase-badge" id="phase-badge">NOMINAL</span>
+    </div>
+    <strong id="phase-name">READY</strong>
+    <span id="phase-help">Select difficulty, choose equatorial or south pole lighting, and initiate descent.</span>
+  </aside>
+
+  <!-- LANDING CONTACTS -->
+  <div id="contacts" class="contacts" aria-label="Landing leg contact indicators">
+    <span class="contact-label">CONTACT PROBES</span>
+    <i data-leg="1" title="Primary Pad A">1</i>
+    <i data-leg="2" title="Pad B">2</i>
+    <i data-leg="3" title="Pad C">3</i>
+    <i data-leg="4" title="Pad D">4</i>
+  </div>
+
+  <!-- FLIGHT CONTROLS TOOLBAR -->
+  <div class="flight-tools">
+    <div class="tool-group-title">FLIGHT DECK CONFIGURATION</div>
+    <label>Difficulty
+      <select id="difficulty" aria-label="Difficulty">
+        <option value="easy">Easy (Low gravity)</option>
+        <option value="normal" selected>Normal (Standard)</option>
+        <option value="hard">Hard (Extreme terrain)</option>
+      </select>
+    </label>
+    <label>Landing Environment
+      <select id="sim-site-lighting" aria-label="Landing Environment Lighting">
+        <option value="south-pole" selected>Artemis South Pole (1.5° Grazing Sun)</option>
+        <option value="equatorial">Apollo 11 Equator (High Sun)</option>
+      </select>
+    </label>
+    <label class="throttle-control">Main Engine Throttle <output id="throttle-output" for="throttle">0%</output>
+      <input id="throttle" type="range" min="0" max="100" value="0" aria-label="Engine throttle">
+    </label>
+    <label>Camera Mode
+      <select id="camera-mode" aria-label="Camera mode">
+        <option value="chase">Chase Camera</option>
+        <option value="cockpit">Cockpit View</option>
+        <option value="top">Top-Down Orbital</option>
+        <option value="cinematic">Cinematic Pad</option>
+      </select>
+    </label>
+    <div class="assist-row">
+      <label class="assist-toggle"><input id="hover-assist" type="checkbox"> Altitude hold</label>
+      <label class="assist-toggle"><input id="rate-assist" type="checkbox"> Descent hold</label>
+    </div>
+    <span id="assist-status" role="status">Assist: Standby</span>
+    <div class="tool-btn-grid">
+      <button class="tool-button" id="pause" type="button" aria-pressed="false">Pause <kbd>P</kbd></button>
+      <button class="tool-button" id="replay" type="button" disabled>Replay Flight</button>
+      <button class="tool-button" id="open-controls" type="button">Keys &amp; Map</button>
+    </div>
+  </div>
+
+  <!-- START DESCENT OVERLAY -->
+  <div id="ov" class="overlay">
+    <span class="overlay-kicker">ORBITAL FLIGHT LAB · DESCENT SIMULATION</span>
+    <h2 id="ovt">Initiate Powered Descent</h2>
+    <p id="ovp">Realistic variable-mass dynamics with dual-bell rocket thrust and RCS attitude control. Land gently below 2.5 m/s, within 1.5 m/s horizontal drift and 10° tilt angle.</p>
+    <button class="go" id="start" type="button">Start Powered Descent <span aria-hidden="true">🚀</span></button>
+  </div>
+
+  <div class="hint">
+    <span class="hint-dot"></span>
+    <span>Drag to orbit camera · Scroll to zoom · <kbd>W</kbd>/<kbd>Space</kbd> Thrust · <kbd>A</kbd>/<kbd>D</kbd> Lateral · <kbd>Q</kbd>/<kbd>E</kbd> Roll · <kbd>?</kbd> Controls</span>
+  </div>
+
+  <!-- TOUCH CONTROLS -->
+  <div class="touch-controls" aria-label="Touch controls">
+    <div class="stick-wrap">
+      <span>RCS ATTITUDE</span>
+      <div id="joystick" class="joystick" role="application" aria-label="Virtual attitude joystick"><i></i></div>
+      <button id="touch-fine" class="touch-fine" type="button" aria-pressed="false">FINE: OFF</button>
+    </div>
+    <label class="touch-throttle" for="touch-throttle">THROTTLE <input id="touch-throttle" type="range" min="0" max="100" value="0"></label>
+  </div>
+
+  <!-- QUICK ACTION PADS -->
+  <div id="pads">
+    <button class="pad" id="bl" type="button" aria-label="Steer left">◀ RCS</button>
+    <button class="pad main" id="bt" type="button">THRUST</button>
+    <button class="pad" id="br" type="button" aria-label="Steer right">RCS ▶</button>
+  </div>
+</header>
+
+
+<!-- SECTION 1: LUNAR LANDING SITE NAVIGATOR (MAIN CHALLENGE APPLICATION) -->
+<section id="navigator" class="nav-section">
+  <div class="wrap">
+    <div class="section-badge-row">
+      <span class="badge-tag gold-badge"><span class="badge-pulse gold-pulse"></span>NASA SPACE APPS CHALLENGE 2026</span>
+      <span class="badge-tag">CHALLENGE: LUNAR LANDING SITE NAVIGATOR</span>
+    </div>
+    <h2 class="sec">Compare Lunar Landing Sites &amp; Operational Windows.</h2>
+    <p class="lede">
+      Missions to the Moon’s south pole face extreme lighting and communication constraints. The south pole's geometry creates grazing solar angles and Earth libration occlusions. Rapid scenario evaluation allows science and engineering teams to analyze solar power availability, direct-to-Earth communication line of sight, and shadow hazards before selecting a landing site and date.
+    </p>
+
+    <!-- MISSION PLANNER INTERACTIVE TOOLBAR -->
+    <div class="nav-card planner-toolbar">
+      <div class="planner-toolbar-grid">
+        <!-- Site Selection Dropdown -->
+        <div class="control-box">
+          <label for="target-site-select" class="ctrl-label">
+            <span class="ctrl-icon">🎯</span> CANDIDATE LANDING SITE
+          </label>
+          <select id="target-site-select" class="site-dropdown">
+            <optgroup label="🌕 Artemis III South Pole Candidate Sites">
+              <option value="shackleton" selected>Shackleton Crater Rim (89.90°S, 0.00°E) — Elev: +4.2 km</option>
+              <option value="connecting_ridge">Connecting Ridge (89.44°S, 222.50°E) — Elev: +3.8 km</option>
+              <option value="malapert_mountain">Malapert Mountain Peak (86.04°S, 2.70°E) — Elev: +5.0 km</option>
+              <option value="de_gerlache_rim2">de Gerlache Rim 2 (88.71°S, 68.70°W) — Elev: +3.4 km</option>
+              <option value="peak_shackleton">Peak Near Shackleton (89.70°S, 126.00°E) — Elev: +4.1 km</option>
+              <option value="haworth_rim">Haworth Crater Rim (87.40°S, 5.10°W) — Elev: +2.9 km</option>
+              <option value="nobile_rim1">Nobile Rim 1 (VIPER Target) (85.20°S, 37.80°E) — Elev: +3.2 km</option>
+              <option value="faustini_rim">Faustini Rim A (87.10°S, 77.00°E) — Elev: +3.6 km</option>
+              <option value="amundsen_rim">Amundsen Rim (84.50°S, 85.60°E) — Elev: +3.1 km</option>
+            </optgroup>
+            <optgroup label="🤖 CLPS &amp; Commercial Missions">
+              <option value="im1_odysseus">IM-1 Odysseus (Nova-C) — Malapert A (80.13°S, 1.44°E)</option>
+              <option value="im2_athena">IM-2 Athena — Shackleton Ridge Drill Site (89.30°S, 140.00°E)</option>
+              <option value="astrobotic_viper">Astrobotic Griffin / VIPER — Mons Mouton (84.90°S, 31.60°W)</option>
+              <option value="blue_ghost1">Firefly Blue Ghost 1 — Mare Crisium (18.56°N, 61.81°E)</option>
+              <option value="hakuto_r">ispace HAKUTO-R — Atlas Crater (47.50°N, 44.40°E)</option>
+            </optgroup>
+            <optgroup label="🚀 Historic Apollo Landings">
+              <option value="apollo11">Apollo 11 — Mare Tranquillitatis (0.67°N, 23.47°E)</option>
+              <option value="apollo12">Apollo 12 — Oceanus Procellarum (3.01°S, 23.42°W)</option>
+              <option value="apollo14">Apollo 14 — Fra Mauro (3.65°S, 17.47°W)</option>
+              <option value="apollo15">Apollo 15 — Hadley Rille (26.13°N, 3.63°E)</option>
+              <option value="apollo16">Apollo 16 — Descartes Highlands (8.97°S, 15.50°E)</option>
+              <option value="apollo17">Apollo 17 — Taurus-Littrow (20.19°N, 30.77°E)</option>
+            </optgroup>
+            <optgroup label="🌏 International Lunar Missions">
+              <option value="chandrayaan3">Chandrayaan-3 — Shiv Shakti Point (69.37°S, 32.32°E)</option>
+              <option value="change3">Chang'e 3 — Mare Imbrium (44.12°N, 19.51°W)</option>
+              <option value="change4">Chang'e 4 (Far Side) — Von Kármán Crater (45.45°S, 177.59°E)</option>
+              <option value="change5">Chang'e 5 — Oceanus Procellarum (43.06°N, 51.92°W)</option>
+              <option value="change6">Chang'e 6 (Far Side Sample) — South Pole-Aitken (41.63°S, 153.99°W)</option>
+              <option value="slim">SLIM — Shioli Crater (13.31°S, 25.25°E)</option>
+            </optgroup>
+            <optgroup label="📍 Custom Coordinates">
+              <option value="custom">Custom Coordinates (Manual Input)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Custom Coordinates Inputs (Shown when selected or editable) -->
+        <div id="custom-coords-panel" class="custom-coords-row">
+          <div class="coord-field">
+            <label for="custom-lat">Latitude (°)</label>
+            <input type="number" id="custom-lat" min="-90" max="90" step="0.01" value="-89.90">
+          </div>
+          <div class="coord-field">
+            <label for="custom-lon">Longitude (°)</label>
+            <input type="number" id="custom-lon" min="-180" max="180" step="0.01" value="0.00">
+          </div>
+          <div class="coord-field">
+            <label for="custom-elev">Elevation (km)</label>
+            <input type="number" id="custom-elev" min="-9" max="9" step="0.1" value="4.2">
+          </div>
+          <div class="coord-field">
+            <label for="custom-mask">Horizon Mask (°)</label>
+            <input type="number" id="custom-mask" min="0" max="25" step="0.5" value="1.2">
+          </div>
+        </div>
+
+        <!-- Date & Ephemeris Time Selection -->
+        <div class="control-box">
+          <label for="ephemeris-date" class="ctrl-label">
+            <span class="ctrl-icon">📅</span> MISSION EPOCH (UTC DATE &amp; TIME)
+          </label>
+          <div class="date-picker-wrap">
+            <input type="datetime-local" id="ephemeris-date" class="date-input">
+            <button id="epoch-now" class="epoch-quick-btn" type="button" title="Set to current date/time">NOW</button>
+          </div>
+          <small class="date-hint">Known lunar mission dates select that mission's site and coordinates; other dates keep the current site.</small>
+        </div>
+      </div>
+
+      <!-- Quick Scenario Presets -->
+      <div class="preset-pills-row">
+        <span class="preset-label">SCENARIO PRESETS:</span>
+        <button class="preset-pill active" data-preset="artemis3" type="button">🚀 Artemis III (2026 Window)</button>
+        <button class="preset-pill" data-preset="solstice" type="button">☀️ South Pole Peak Summer (Max Sun)</button>
+        <button class="preset-pill" data-preset="im1" type="button">🤖 IM-1 Odysseus Landing (Feb 2024)</button>
+        <button class="preset-pill" data-preset="chandrayaan3" type="button">🇮🇳 Chandrayaan-3 (Aug 2023)</button>
+        <button class="preset-pill" data-preset="apollo11" type="button">🦅 Apollo 11 Touchdown (July 1969)</button>
+      </div>
+
+      <!-- Temporal scrubber bar across lunar day (29.53 Earth days synodic cycle) -->
+      <div class="temporal-scrubber-box">
+        <div class="scrubber-header">
+          <div class="scrubber-title">
+            <span class="scrubber-dot"></span>
+            <span>TEMPORAL DYNAMICS · SYNODIC LUNAR DAY EXPLORER (29.53 EARTH DAYS)</span>
+          </div>
+          <div class="scrubber-time-display">
+            <span id="scrubber-offset-label">LUNAR DAY OFFSET: +0.0 hrs</span>
+            <span id="scrubber-utc-preview">2026-10-24 12:00 UTC</span>
+          </div>
+        </div>
+        <div class="scrubber-control-row">
+          <button id="scrubber-step-back-day" class="scrubber-btn" type="button" title="Step back 24 hours">-24h</button>
+          <button id="scrubber-step-back-hr" class="scrubber-btn" type="button" title="Step back 1 hour">-1h</button>
+          <button id="scrubber-play" class="scrubber-btn play-btn" type="button" title="Play animated lunar day progression">▶ Play 30d Cycle</button>
+          <button id="scrubber-step-fwd-hr" class="scrubber-btn" type="button" title="Step forward 1 hour">+1h</button>
+          <button id="scrubber-step-fwd-day" class="scrubber-btn" type="button" title="Step forward 24 hours">+24h</button>
+          <input type="range" id="lunar-day-slider" min="0" max="708.7" step="1" value="0" aria-label="Lunar day time scrubber">
+          <button id="scrubber-reset" class="scrubber-btn" type="button" title="Reset offset to selected date">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN TWO-COLUMN VISUALIZATION & ANALYTICS LAYOUT -->
+    <div class="navigator-workspace-grid">
+      <!-- LEFT COLUMN: DUAL 2D LUNAR MAP & 3D HORIZON SKY DOME -->
+      <div class="viz-column">
+        <!-- Visualization Selector Tabs -->
+        <div class="viz-tabs">
+          <button id="tab-3d-globe" class="viz-tab active" type="button">
+            <span class="tab-icon">🌕</span> 3D Lunar Globe &amp; LROC
+          </button>
+          <button id="tab-3d-dome" class="viz-tab" type="button">
+            <span class="tab-icon">🌐</span> 3D Horizon &amp; Celestial Dome
+          </button>
+          <button id="tab-2d-map" class="viz-tab" type="button">
+            <span class="tab-icon">🗺️</span> Interactive Lunar Map (Polar / Global)
+          </button>
+        </div>
+
+        <!-- 3D Interactive Lunar Globe Container (Default View) -->
+        <div id="globe-view-container" class="viz-card globe-card">
+          <div class="viz-card-header">
+            <div>
+              <div class="card-title-tag">
+                <h3>3D Interactive Lunar Globe (NASA LROC)</h3>
+                <span class="badge-tag gold-badge"><span class="badge-pulse gold-pulse"></span>HIGH-RES TEXTURE</span>
+              </div>
+              <p>Photorealistic 3D Moon with NASA surface texture, dynamic solar illumination terminator, candidate landing site markers, and polar camera alignment.</p>
+            </div>
+            <div class="globe-toolbar">
+              <div class="globe-views-btn-group">
+                <button id="btn-view-southpole" class="globe-btn active" type="button" title="Focus Lunar South Pole (Shackleton / Malapert)">🏔️ South Pole</button>
+                <button id="btn-view-nearside" class="globe-btn" type="button" title="Focus Earth-Facing Nearside (Apollo sites)">🌍 Nearside</button>
+                <button id="btn-view-farside" class="globe-btn" type="button" title="Focus Farside (Aitken Basin)">🌑 Farside</button>
+                <button id="btn-toggle-rotate" class="globe-btn" type="button" title="Toggle Auto-Rotation">🔄 Auto-Rotate</button>
+              </div>
+              <a href="https://bit.ly/4khUHvD" target="_blank" rel="noopener" class="globe-btn quickmap-link-btn" title="Open NASA LROC Quickmap for South Pole site inspection">
+                <span>🚀 Open LROC QuickMap ↗</span>
+              </a>
+            </div>
+          </div>
+          <div class="canvas-aspect-wrap">
+            <div id="globe-fallback" class="globe-fallback" role="img" aria-label="Moon surface preview">
+              <div class="globe-fallback-moon"></div>
+            </div>
+            <canvas id="globe-canvas" width="800" height="460" aria-label="Interactive 3D Moon Globe with landing site markers"></canvas>
+            <div id="globe-status" class="globe-status" role="status" aria-live="polite" hidden></div>
+            <div id="globe-tooltip" class="globe-hover-tooltip" hidden></div>
+            <div class="globe-overlay-info">
+              <div class="globe-stat">
+                <span class="lbl">FOCUS:</span>
+                <span id="globe-focus-name" class="val">Connecting Ridge (Artemis III)</span>
+              </div>
+              <div class="globe-stat">
+                <span class="lbl">COORDINATES:</span>
+                <span id="globe-focus-coords" class="val">89.44°S / 137.31°E</span>
+              </div>
+              <div class="globe-stat">
+                <span class="lbl">SOLAR TERMINATOR:</span>
+                <span id="globe-illum-pct" class="val">Calculated via Ephemeris</span>
+              </div>
+            </div>
+            <div class="dome-camera-hint">Drag to rotate 3D Moon · Scroll to zoom · Click pins to select landing site</div>
+          </div>
+          <div class="globe-footer-legend">
+            <span class="legend-chip"><i class="chip-dot artemis-dot"></i> Artemis III Candidates</span>
+            <span class="legend-chip"><i class="chip-dot clps-dot"></i> CLPS Payloads</span>
+            <span class="legend-chip"><i class="chip-dot apollo-dot"></i> Apollo Missions</span>
+            <span class="legend-chip"><i class="chip-dot intl-dot"></i> International</span>
+            <span class="legend-chip selected-chip"><i class="chip-dot active-dot"></i> Active Observer Pin</span>
+          </div>
+        </div>
+
+        <!-- 3D Horizon & Celestial Dome Visualizer Container -->
+        <div id="dome-view-container" class="viz-card dome-card" hidden>
+          <div class="viz-card-header">
+            <div>
+              <h3>Observer Celestial Horizon Dome</h3>
+              <p>Visualizing Sun and Earth positions relative to the candidate site horizon, crater rim elevation obstruction, and DTE communication vector.</p>
+            </div>
+            <div class="dome-legend">
+              <span class="legend-item"><i class="legend-sun"></i> Sun Vector</span>
+              <span class="legend-item"><i class="legend-earth"></i> Earth Vector</span>
+              <span class="legend-item"><i class="legend-rim"></i> Terrain Rim Mask</span>
+            </div>
+          </div>
+          <div class="canvas-aspect-wrap">
+            <canvas id="dome-canvas" width="800" height="460" aria-label="3D celestial horizon dome showing Sun and Earth positions relative to the lunar horizon"></canvas>
+            <div class="dome-compass-overlay">
+              <span class="compass-n">NORTH 0°</span>
+              <span class="compass-e">EAST 90°</span>
+              <span class="compass-s">SOUTH 180°</span>
+              <span class="compass-w">WEST 270°</span>
+              <span class="elevation-ring-label-0">0° HORIZON</span>
+              <span class="elevation-ring-label-30">30°</span>
+              <span class="elevation-ring-label-60">60°</span>
+              <span class="elevation-ring-label-90">90° ZENITH</span>
+            </div>
+            <div class="dome-camera-hint">Drag to orbit view · Scroll to zoom</div>
+          </div>
+        </div>
+
+        <!-- Interactive 2D Lunar Map (Hidden initially until tab switched) -->
+        <div id="map-view-container" class="viz-card map-card" hidden>
+          <div class="viz-card-header">
+            <div>
+              <h3>Interactive Landing Site Map</h3>
+              <p>Click anywhere on the map to evaluate custom coordinates. Explore Permanently Shadowed Regions (PSRs) and Peaks of Eternal Light (PELs).</p>
+            </div>
+            <div class="map-mode-toggle">
+              <button id="map-mode-polar" class="map-toggle-btn active" type="button">South Pole Stereographic (60°–90°S)</button>
+              <button id="map-mode-global" class="map-toggle-btn" type="button">Global Equirectangular</button>
+            </div>
+          </div>
+          <div class="canvas-aspect-wrap">
+            <canvas id="lunar-map-canvas" width="800" height="460" aria-label="Interactive 2D lunar map with landing site pins and coordinate picker"></canvas>
+            <div id="map-tooltip" class="map-hover-tooltip" hidden></div>
+          </div>
+          <div class="map-legend-row">
+            <span class="legend-chip"><i class="chip-dot artemis-dot"></i> Artemis III Candidate</span>
+            <span class="legend-chip"><i class="chip-dot clps-dot"></i> CLPS / Commercial</span>
+            <span class="legend-chip"><i class="chip-dot apollo-dot"></i> Apollo Heritage</span>
+            <span class="legend-chip"><i class="chip-dot intl-dot"></i> International</span>
+            <span class="legend-chip"><i class="chip-dot psr-dot"></i> Water-Ice PSR</span>
+            <span class="legend-chip"><i class="chip-dot pel-dot"></i> Peak of Eternal Light</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: TELEMETRY & FEASIBILITY ANALYTICS DASHBOARD -->
+      <div class="analytics-column">
+        <!-- Site Overview Banner -->
+        <div class="analytics-card site-hero-card">
+          <div class="site-header-row">
+            <div>
+              <span class="badge-tag gold-badge" id="card-site-category">ARTEMIS CANDIDATE</span>
+              <h3 id="card-site-name">Shackleton Crater Rim</h3>
+              <p id="card-site-coords">89.90°S, 0.00°E · Elevation +4.2 km</p>
+            </div>
+            <div class="feasibility-badge" id="card-feasibility-badge">
+              <span class="feasibility-score">HIGH</span>
+              <span class="feasibility-sub">FEASIBILITY</span>
+            </div>
+          </div>
+          <p id="card-site-desc" class="site-bio">
+            Connecting Ridge / Shackleton Rim provides exceptional solar availability exceeding 86% of the lunar year, direct line of sight to Earth for communications, and immediate proximity to cold traps containing water ice.
+          </p>
+        </div>
+
+        <!-- Metric Cards Grid -->
+        <div class="metrics-grid">
+          <!-- Solar Elevation & Power Metric -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">☀️ SOLAR ELEVATION &amp; POWER</span>
+              <span class="status-indicator-lit" id="sun-status-tag">DIRECT SUN</span>
+            </div>
+            <div class="metric-main-val">
+              <span id="sun-elevation-val">+1.8°</span>
+              <small id="sun-azimuth-val">Az: 142.4° SE</small>
+            </div>
+            <div class="power-bar-wrap">
+              <div class="power-bar-meta">
+                <span>Power Potential (Vertical Array)</span>
+                <b id="power-yield-val">99% (~1.9 kW)</b>
+              </div>
+              <div class="power-meter"><i id="power-meter-fill" style="width: 99%;"></i></div>
+            </div>
+            <div class="metric-sub-detail">
+              <span>Time Until Sunset:</span>
+              <b id="sun-countdown-val">184h 12m remaining</b>
+            </div>
+          </div>
+
+          <!-- Earth Elevation & DTE Comms Metric -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">🌍 DIRECT-TO-EARTH (DTE) COMMS</span>
+              <span class="status-indicator-link" id="earth-status-tag">ACTIVE LINK</span>
+            </div>
+            <div class="metric-main-val">
+              <span id="earth-elevation-val">+5.4°</span>
+              <small id="earth-azimuth-val">Az: 003.8° N</small>
+            </div>
+            <div class="comms-meta-grid">
+              <div>
+                <span>Link Margin</span>
+                <b id="comms-margin-val">+14.2 dB</b>
+              </div>
+              <div>
+                <span>Libration Lib_lat / Lib_lon</span>
+                <b id="libration-val">+4.2° / -3.1°</b>
+              </div>
+              <div>
+                <span>One-Way Latency</span>
+                <b>1.28 s (DSN LOS)</b>
+              </div>
+              <div>
+                <span>Relay Needed?</span>
+                <b id="relay-status-val">NO (Direct LOS)</b>
+              </div>
+            </div>
+            <div class="metric-sub-detail">
+              <span>Time Until Earthset:</span>
+              <b id="earth-countdown-val">340h (Continuous Window)</b>
+            </div>
+          </div>
+
+          <!-- Terrain & Shadow Hazard Metric -->
+          <div class="metric-card">
+            <div class="metric-header">
+              <span class="metric-title">🏔️ TOPOGRAPHY &amp; SHADOW PROFILE</span>
+              <span class="hazard-badge-safe" id="terrain-status-tag">ELEVATED CREST</span>
+            </div>
+            <dl class="terrain-spec-list">
+              <div><dt>Site Elevation</dt><dd id="terrain-elev-val">+4.2 km</dd></div>
+              <div><dt>Horizon Obstruction Mask</dt><dd id="terrain-mask-val">1.2° local rim angle</dd></div>
+              <div><dt>Distance to Water-Ice PSR</dt><dd id="terrain-psr-dist-val">1.4 km (Shackleton Interior)</dd></div>
+              <div><dt>Estimated Surface Temp</dt><dd id="terrain-temp-val">-50°C (Lit) / -230°C (Shadow)</dd></div>
+            </dl>
+          </div>
+
+          <!-- Mission Architecture Recommendation -->
+          <div class="metric-card advisory-card">
+            <div class="metric-header">
+              <span class="metric-title">📋 MISSION PLANNER ADVISORY</span>
+              <span class="badge-tag">ENGINEERING GUIDANCE</span>
+            </div>
+            <p id="advisory-text" class="advisory-text">
+              <strong>Optimal Landing Window:</strong> High sun elevation (+1.8°) allows vertical bifacial solar panels to operate at peak efficiency. Earth elevation (+5.4°) provides uninterrupted direct-to-Earth telemetry without requiring a lunar orbital relay. Battery reserve sizing can be reduced by 60% compared to non-polar equatorial night sites.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 30-DAY TEMPORAL TIMELINE & EPHEMERIS CURVE -->
+    <div class="nav-card timeline-card">
+      <div class="timeline-header-row">
+        <div>
+          <h3>30-Day Solar &amp; Earth Horizon Curves (Synodic Illumination &amp; Comms Cycle)</h3>
+          <p>
+            Continuous ephemeris forecast for the selected site across one lunar month (29.53 days). The golden curve illustrates solar elevation relative to the horizon, and the cyan curve illustrates Earth elevation modulated by lunar libration wobble.
+          </p>
+        </div>
+        <div class="timeline-legend">
+          <span class="legend-item"><i class="legend-curve-sun"></i> Sun Elevation Angle (Power Window)</span>
+          <span class="legend-item"><i class="legend-curve-earth"></i> Earth Elevation Angle (DTE Comms Window)</span>
+          <span class="legend-item"><i class="legend-curve-horizon"></i> 0° Horizon Level</span>
+        </div>
+      </div>
+      <div class="canvas-aspect-wrap timeline-aspect">
+        <canvas id="timeline-chart-canvas" width="1100" height="260" aria-label="30-day temporal chart showing Sun and Earth elevation angles relative to horizon"></canvas>
+      </div>
+    </div>
+
+    <!-- NASA & PARTNER RESOURCES INTEGRATION BAR -->
+    <div id="resources" class="resources-integration-banner">
+      <div class="resources-header">
+        <span class="badge-tag gold-badge">OFFICIAL NASA &amp; CSA CHALLENGE DATA SOURCES</span>
+        <h3>Direct Mission Analysis &amp; Ephemeris Tools</h3>
+        <p>Seamlessly inspect candidate coordinates and ephemeris tables in official NASA and Canadian Space Agency mission tools:</p>
+      </div>
+      <div class="resource-links-grid">
+        <a id="link-quickmap" class="resource-card" href="https://quickmap.lroc.asu.edu/" target="_blank" rel="noopener">
+          <div class="resource-card-icon">🛰️</div>
+          <div class="resource-card-body">
+            <strong>NASA Quickmap (LROC / ASU) ↗</strong>
+            <span>Explore high-resolution LROC NAC imagery, topography, slope maps, and permanent shadow models for this site.</span>
+            <small class="resource-action" id="quickmap-coord-label">Open coordinates in Quickmap →</small>
+          </div>
+        </a>
+
+        <a id="link-moontrek" class="resource-card" href="https://trek.nasa.gov/moon/" target="_blank" rel="noopener">
+          <div class="resource-card-icon">🌐</div>
+          <div class="resource-card-body">
+            <strong>NASA Moon Trek ↗</strong>
+            <span>Interactive 3D planetary GIS with elevation profiles, crater contours, and LOLA laser altimeter terrain models.</span>
+            <small class="resource-action">Fly to site in Moon Trek →</small>
+          </div>
+        </a>
+
+        <a id="link-horizons" class="resource-card" href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">
+          <div class="resource-card-icon">📐</div>
+          <div class="resource-card-body">
+            <strong>JPL Horizons Ephemeris System ↗</strong>
+            <span>Generate high-precision vectors for Sun and Earth positions, libration angles, and solar illumination geometry.</span>
+            <small class="resource-action">Query JPL Horizons System →</small>
+          </div>
+        </a>
+
+        <a id="link-csa" class="resource-card" href="https://www.asc-csa.gc.ca/eng/astronomy/moon-exploration/" target="_blank" rel="noopener">
+          <div class="resource-card-icon">🍁</div>
+          <div class="resource-card-body">
+            <strong>CSA Moon Exploration Portal ↗</strong>
+            <span>Canadian Space Agency contributions to lunar science, Canadarm3, lunar rovers, and international exploration.</span>
+            <small class="resource-action">Explore CSA Lunar Programs →</small>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- SECTION 2: MULTI-SITE TRADE-OFF COMPARATOR -->
+<section id="comparator" class="panel">
+  <div class="wrap">
+    <p class="section-tag"><span>02</span> RAPID SCENARIO EVALUATION</p>
+    <h2 class="sec">Side-by-Side Landing Site Comparator.</h2>
+    <p class="lede">
+      Mission development rarely proceeds on a fixed timeline. Launch delays, hardware constraints, or rover payload changes require mission planners to rapidly compare alternative landing sites in the south pole region against heritage equatorial sites.
+    </p>
+
+    <div class="comparator-controls-row">
+      <div class="comp-selector">
+        <label for="comp-site-1">PRIMARY SITE (A)</label>
+        <select id="comp-site-1">
+          <option value="shackleton" selected>Shackleton Crater Rim (89.9°S)</option>
+          <option value="connecting_ridge">Connecting Ridge (89.4°S)</option>
+          <option value="malapert_mountain">Malapert Mountain (86.0°S)</option>
+          <option value="de_gerlache_rim2">de Gerlache Rim 2 (88.7°S)</option>
+          <option value="nobile_rim1">Nobile Rim 1 (85.2°S)</option>
+          <option value="apollo11">Apollo 11 (Mare Tranquillitatis)</option>
+        </select>
+      </div>
+
+      <div class="comp-vs">VS</div>
+
+      <div class="comp-selector">
+        <label for="comp-site-2">ALTERNATIVE SITE (B)</label>
+        <select id="comp-site-2">
+          <option value="shackleton">Shackleton Crater Rim (89.9°S)</option>
+          <option value="connecting_ridge">Connecting Ridge (89.4°S)</option>
+          <option value="malapert_mountain" selected>Malapert Mountain (86.0°S)</option>
+          <option value="de_gerlache_rim2">de Gerlache Rim 2 (88.7°S)</option>
+          <option value="nobile_rim1">Nobile Rim 1 (85.2°S)</option>
+          <option value="apollo11">Apollo 11 (Mare Tranquillitatis)</option>
+        </select>
+      </div>
+
+      <div class="comp-vs">VS</div>
+
+      <div class="comp-selector">
+        <label for="comp-site-3">BENCHMARK (C)</label>
+        <select id="comp-site-3">
+          <option value="shackleton">Shackleton Crater Rim (89.9°S)</option>
+          <option value="connecting_ridge">Connecting Ridge (89.4°S)</option>
+          <option value="malapert_mountain">Malapert Mountain (86.0°S)</option>
+          <option value="de_gerlache_rim2">de Gerlache Rim 2 (88.7°S)</option>
+          <option value="nobile_rim1">Nobile Rim 1 (85.2°S)</option>
+          <option value="apollo11" selected>Apollo 11 (Mare Tranquillitatis)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- COMPARISON TABLE -->
+    <div class="tbl comp-table-wrap">
+      <table class="comp-table" id="comparison-matrix-table">
+        <thead>
+          <tr>
+            <th>Evaluation Criteria</th>
+            <th id="th-site-1">Site A: Shackleton Rim</th>
+            <th id="th-site-2">Site B: Malapert Mountain</th>
+            <th id="th-site-3">Site C: Apollo 11 Equator</th>
+          </tr>
+        </thead>
+        <tbody id="comparison-tbody">
+          <!-- Populated dynamically via JS -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+<!-- SECTION 3: THE APOLLO & ARTEMIS MISSION ARCHIVE -->
+<section id="mission">
+  <div class="wrap">
+    <p class="section-tag"><span>03</span> MISSION ARCHIVE</p>
+    <h2 class="sec">Six Apollo Landings.<br>The Next Artemis Era.</h2>
+    <p class="lede">Explore historic Apollo lunar surface missions alongside next-generation Artemis and CLPS commercial landings. Verified records from NASA NSSDCA.</p>
+    <div id="mission-cards" class="mission-grid"></div>
+
+    <h3 class="subheading">Apollo 11 · Mission Milestones</h3>
+    <ol class="tl">
+      <li><time>July 16, 1969 · 13:32 UT</time>Launch of Saturn V AS-506 from Kennedy Space Center Launch Complex 39A. <a href="https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo11info.html" target="_blank" rel="noopener">NASA mission record ↗</a></li>
+      <li><time>July 20, 1969 · 20:17 UT</time>Eagle touches down in Mare Tranquillitatis (0.674°N, 23.473°E). "Houston, Tranquility Base here. The Eagle has landed." <a href="https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo11info.html" target="_blank" rel="noopener">NASA mission record ↗</a></li>
+      <li><time>July 21, 1969 · 02:56 UT</time>First crewed EVA on the lunar surface. Armstrong &amp; Aldrin deploy scientific instruments and collect 21.55 kg of lunar samples.</li>
+      <li><time>July 24, 1969 · 16:50 UT</time>Command Module Columbia splashes down safely in the Pacific Ocean.</li>
+    </ol>
+
+    <h3 class="subheading">Historic Lunar Surface Landing Coordinates</h3>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr><th>Mission</th><th>Landing Date</th><th>Site Name</th><th>Coordinates</th><th>Surface EVA</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Apollo 11</td><td>July 20, 1969</td><td>Mare Tranquillitatis</td><td>0.674°N, 23.473°E</td><td>2.53 h</td></tr>
+          <tr><td>Apollo 12</td><td>November 19, 1969</td><td>Oceanus Procellarum</td><td>3.012°S, 23.422°W</td><td>7.75 h</td></tr>
+          <tr><td>Apollo 14</td><td>February 5, 1971</td><td>Fra Mauro</td><td>3.645°S, 17.471°W</td><td>9.38 h</td></tr>
+          <tr><td>Apollo 15</td><td>July 30, 1971</td><td>Hadley Rille / Apennines</td><td>26.132°N, 3.634°E</td><td>19.13 h</td></tr>
+          <tr><td>Apollo 16</td><td>April 20, 1972</td><td>Descartes Highlands</td><td>8.973°S, 15.500°E</td><td>20.23 h</td></tr>
+          <tr><td>Apollo 17</td><td>December 11, 1972</td><td>Taurus–Littrow</td><td>20.191°N, 30.772°E</td><td>22.07 h</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="source">Sources: <a href="https://nssdc.gsfc.nasa.gov/planetary/lunar/apollo.html" target="_blank" rel="noopener">NASA NSSDCA Apollo Program</a> · <a href="https://nssdc.gsfc.nasa.gov/planetary/lunar/apolloland.html" target="_blank" rel="noopener">NASA NSSDCA Lunar Landings Table</a></p>
+  </div>
+</section>
+
+
+<!-- SECTION 4: EAGLE'S DESCENT & DESCENT SCIENCE -->
+<section id="eagle" class="panel">
+  <div class="wrap eagle-grid">
+    <div>
+      <p class="section-tag"><span>04</span> APOLLO 11 · THE FINAL APPROACH</p>
+      <h2 class="sec">Eagle's Powered Descent.</h2>
+      <p class="lede">
+        The final powered descent of Apollo 11 was a sequence of high-precision guidance and manual crew decision-making under critical propellant margins.
+      </p>
+      <ul class="eagle-events">
+        <li>
+          <b>1202 &amp; 1201 Apollo Guidance Computer Alarms</b>
+          <span>Executive overflow condition: the rendezvous radar was in the wrong mode, feeding redundant cycles into the Apollo Guidance Computer. Steve Bales in Mission Control gave the famous "GO" call as core descent guidance tasks remained unaffected.</span>
+        </li>
+        <li>
+          <b>Low-Propellant Quantity Warning (Bingo Call)</b>
+          <span>With under 90 seconds of fuel remaining before the mandatory abort threshold, Neil Armstrong leveled off the lander to fly over a boulder-strewn crater (West Crater) to find a smooth, safe touchdown site.</span>
+        </li>
+        <li>
+          <b>Manual Attitude Takeover</b>
+          <span>Armstrong switched the flight controller to semi-manual mode (P66) to counteract horizontal drift and ease Eagle gently onto the regolith with less than 45 seconds of fuel remaining.</span>
+        </li>
+      </ul>
+    </div>
+    <figure class="eagle-image">
+      <img src="https://images-assets.nasa.gov/image/6900992/6900992~large.jpg" alt="NASA archival photograph of Apollo 11 Lunar Module Eagle on descent" loading="lazy">
+      <figcaption>NASA Image and Video Library · ID 6900992. <a href="https://images-assets.nasa.gov/image/6900992/collection.json" target="_blank" rel="noopener">Source record ↗</a></figcaption>
+    </figure>
+    <p class="source eagle-source">Journal reference: <a href="https://www.nasa.gov/history/alsj-and-afj/" target="_blank" rel="noopener">NASA History — Apollo Lunar Surface Journal</a>.</p>
+  </div>
+</section>
+
+
+<!-- SECTION 5: NASA IMAGE ARCHIVE -->
+<section id="gallery">
+  <div class="wrap">
+    <p class="section-tag"><span>05</span> NASA IMAGE ARCHIVE</p>
+    <h2 class="sec">The Moon, Documented.</h2>
+    <p class="lede">NASA archival photography and Lunar Reconnaissance Orbiter (LROC) imagery. Select any frame to inspect in full resolution.</p>
+    <div id="gallery-grid" class="gallery-grid"></div>
+    <p class="source">Image metadata links to NASA's Image and Video Library API records. <a href="https://www.nasa.gov/nasa-brand-center/images-and-media/" target="_blank" rel="noopener">NASA media usage guidelines</a>.</p>
+  </div>
+</section>
+
+
+<!-- SECTION 6: DESCENT SCIENCE & FLIGHT LAB INTEGRATION -->
+<section id="science" class="panel">
+  <div class="wrap">
+    <p class="section-tag"><span>06</span> FLIGHT PHYSICS &amp; REPLAY VALIDATION</p>
+    <h2 class="sec">Orbital Descent Mechanics.</h2>
+    <p class="lede">
+      Mathematical flight mechanics integrating variable-mass Tsiolkovsky rocket dynamics, pitch/roll reaction control torque, and local lunar gravitational acceleration.
+    </p>
+
+    <div class="stages">
+      <article>
+        <h3>Braking Phase</h3>
+        <p>Kill high orbital velocity (~1,700 m/s) at high altitude. Manage continuous main engine thrust to bring down descent rate before closing stopping distance.</p>
+      </article>
+      <article>
+        <h3>Pitch-Over &amp; Approach</h3>
+        <p>Rotate lander upright to establish direct radar ground lock and visually locate candidate landing site. Damp lateral drift velocities.</p>
+      </article>
+      <article>
+        <h3>Final Terminal Descent</h3>
+        <p>Switch to fine throttle adjustments. Regulate vertical speed below 2.5 m/s and horizontal drift under 1.5 m/s while maintaining attitude within 10°.</p>
+      </article>
+      <article>
+        <h3>Touchdown &amp; Engine Cutoff</h3>
+        <p>Deployable 1.5-meter contact probes touch regolith first, illuminating CONTACT lamps on the instrument panel. Pilot commands immediate main engine shutdown.</p>
+      </article>
+    </div>
+
+    <div class="science-grid">
+      <div>
+        <h3>Tsiolkovsky Variable-Mass Acceleration</h3>
+        <p>As propellant is consumed through the high-expansion rocket bell, vehicle mass decreases, causing available thrust-to-weight acceleration to continuously increase.</p>
+      </div>
+      <div>
+        <h3>JDK Server-Side Replay Verification</h3>
+        <p>Browser flight telemetry is recorded in a fixed-step input vector and replayed deterministically by the Java HTTP server before admitting verified scores to the flight log.</p>
+      </div>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Simulation implementation">
+      <button role="tab" aria-selected="true" data-code="code-physics">Physics Engine Model</button>
+      <button role="tab" aria-selected="false" data-code="code-ephem">Ephemeris Calculations</button>
+      <button role="tab" aria-selected="false" data-code="code-api">Server Validation API</button>
+    </div>
+
+    <pre id="code-physics" class="code-panel"><code>// Deterministic Tsiolkovsky Flight Dynamics:
+a_thrust = (throttle / 100) * maxThrust / totalMass
+dm/dt    = -thrust / exhaustVelocity
+a_net    = a_thrust * cos(pitch) * cos(roll) - g_lunar
+v_vert   = v_vert + a_net * dt
+y_pos    = y_pos + v_vert * dt</code></pre>
+
+    <pre id="code-ephem" class="code-panel" hidden><code>// Lunar Ephemeris & Horizon Geometry (Sun & Earth):
+sin(el_sun)   = sin(lat) * sin(dec_sun) + cos(lat) * cos(dec_sun) * cos(H_sun)
+tan(az_sun)   = sin(H_sun) / (cos(lat) * tan(dec_sun) - sin(lat) * cos(H_sun))
+sin(el_earth) = sin(lat) * sin(dec_earth) + cos(lat) * cos(dec_earth) * cos(H_earth)
+power_yield   = el_sun > mask ? 100 * cos(el_sun) : 0% (in shadow)
+dte_link      = el_earth > mask ? "CONNECTED (+14 dB)" : "OCCLUDED (RELAY REQUIRED)"</code></pre>
+
+    <pre id="code-api" class="code-panel" hidden><code>POST /api/scores
+Content-Type: application/json
+{
+  "name": "Artemis Pilot",
+  "difficulty": "normal",
+  "inputs": [[throttle, lateral, pitch, roll, fine], ...]
+}
+// The server replays the fixed-step input trace through LunarPhysics.java</code></pre>
+  </div>
+</section>
+
+
+<!-- SECTION 7: LEADERBOARD -->
+<section id="leaderboard">
+  <div class="wrap">
+    <p class="section-tag"><span>07</span> VERIFIED FLIGHT LOG</p>
+    <h2 class="sec">Verified Touchdown Scores.</h2>
+    <p class="lede">Scores are accepted only after the JDK server replays and validates the descent trajectory.</p>
+    <div class="tbl">
+      <table>
+        <thead>
+          <tr><th>Rank</th><th>Pilot</th><th>Difficulty</th><th>Vertical</th><th>Horizontal</th><th>Tilt</th><th>Score</th></tr>
+        </thead>
+        <tbody id="lb">
+          <tr><td colspan="7">Loading verified scores…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p id="leaderboard-status" class="status" role="status"></p>
+  </div>
+</section>
+
+
+<!-- FOOTER & THE EASTER EGG IN THE BOTTOM RIGHT CORNER AT THE END OF THE WEBSITE -->
+<footer class="site-footer">
+  <div class="footer-wrap">
+    <div class="footer-brand-col">
+      <a class="brand" href="#hero">
+        <span class="brand-mark" aria-hidden="true">O</span>
+        <div class="brand-title">
+          <span>LUNAR <b>NAVIGATOR</b></span>
+          <span class="brand-sub">SPACE APPS 2026 // FLIGHT LAB</span>
+        </div>
+      </a>
+      <p class="footer-desc">
+        Interactive Lunar Landing Site Navigator &amp; Orbital Flight Lab created for the NASA Space Apps Challenge 2026. Built with Three.js, Canvas 2D, and Java HTTP server.
+      </p>
+    </div>
+
+    <div class="footer-links-col">
+      <strong>CHALLENGE &amp; DATA SOURCES</strong>
+      <a href="https://www.spaceappschallenge.org/2026/challenges/lunar-landing-site-navigator/" target="_blank" rel="noopener">NASA Space Apps Challenge 2026 ↗</a>
+      <a href="https://quickmap.lroc.asu.edu/" target="_blank" rel="noopener">NASA Quickmap (LROC / ASU) ↗</a>
+      <a href="https://trek.nasa.gov/moon/" target="_blank" rel="noopener">NASA Moon Trek ↗</a>
+      <a href="https://ssd.jpl.nasa.gov/horizons/" target="_blank" rel="noopener">JPL Horizons Ephemeris System ↗</a>
+      <a href="https://www.asc-csa.gc.ca/eng/astronomy/moon-exploration/" target="_blank" rel="noopener">Canadian Space Agency Moon Exploration ↗</a>
+    </div>
+
+    <div class="footer-links-col">
+      <strong>NAVIGATION</strong>
+      <a href="#navigator">Site Navigator</a>
+      <a href="#comparator">Site Comparator</a>
+      <a href="#hero">Flight Simulator</a>
+      <a href="#mission">Mission Archive</a>
+      <a href="#science">Descent Physics</a>
+      <a class="back-top" href="#hero">Back to Orbit ↑</a>
+    </div>
+
+  </div>
+
+  <div class="footer-bottom-bar">
+    <p>Educational and analytical mission planning tool. Independent project; not affiliated with or endorsed by NASA or the Canadian Space Agency.</p>
+    <p class="challenge-tagline">NASA Space Apps Challenge 2026: Lunar Landing Site Navigator</p>
+  </div>
+</footer>
+
+
+<!-- MODALS & DIALOGS -->
+
+<!-- TOUCHDOWN REPORT MODAL -->
+<dialog id="report-dialog" class="modal">
+  <form method="dialog"><button class="modal-close" aria-label="Close report">×</button></form>
+  <p class="section-tag"><span>FLIGHT COMPLETE</span></p>
+  <h2 id="report-title">Touchdown Report</h2>
+  <p id="report-verdict"></p>
+  <dl class="report-grid">
+    <div><dt>Vertical touchdown speed</dt><dd id="report-vertical">—</dd></div>
+    <div><dt>Horizontal speed</dt><dd id="report-horizontal">—</dd></div>
+    <div><dt>Lander tilt</dt><dd id="report-tilt">—</dd></div>
+    <div><dt>Fuel remaining</dt><dd id="report-fuel">—</dd></div>
+    <div><dt>Distance to pad</dt><dd id="report-distance">—</dd></div>
+    <div><dt>Mission score</dt><dd id="report-score">—</dd></div>
+  </dl>
+  <label class="pilot-entry">Pilot Name <input id="report-name" maxlength="24" autocomplete="nickname" placeholder="Your callsign"></label>
+  <button class="go" id="report-save" type="button">Submit Verified Score</button>
+  <button class="tool-button" id="report-replay" type="button">Replay Descent</button>
+  <p id="report-status" role="status"></p>
+</dialog>
+
+<!-- CONTROLS KEY REMAP MODAL -->
+<dialog id="controls-dialog" class="modal controls-modal">
+  <form method="dialog"><button class="modal-close" aria-label="Close controls">×</button></form>
+  <p class="section-tag"><span>FLIGHT MANUAL</span></p>
+  <h2>Controls &amp; Key Mapping</h2>
+  <div class="controls-list">
+    <p>Click a key below, then press its replacement. Space remains an alternate thrust key.</p>
+    <div id="key-remap-list" class="key-remap-list"></div>
+    <p><kbd>Shift</kbd> Fine thrust and attitude control</p>
+    <p>Gamepad: Triggers throttle; left stick pitch/roll; right stick lateral control.</p>
+    <p>Touch: Use the virtual attitude stick, fine-control toggle, and throttle slider on mobile devices.</p>
+  </div>
+  <button class="go" id="save-settings" type="button">Save Controls</button>
+  <button class="tool-button" id="reset-settings" type="button">Reset Default Controls</button>
+  <p id="settings-status" role="status"></p>
+</dialog>
+
+<!-- IMAGE LIGHTBOX -->
+<dialog id="lightbox" class="lightbox">
+  <button class="modal-close" id="lightbox-close" aria-label="Close image">×</button>
+  <button id="lightbox-prev" class="lightbox-step" aria-label="Previous image">‹</button>
+  <figure>
+    <img id="lightbox-image" alt="">
+    <figcaption id="lightbox-caption"></figcaption>
+  </figure>
+  <button id="lightbox-next" class="lightbox-step" aria-label="Next image">›</button>
+</dialog>
+
+<script src="three.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
